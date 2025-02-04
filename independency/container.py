@@ -1,6 +1,7 @@
 import copy
 import dataclasses
 import inspect
+from enum import Enum
 from typing import (
     Any,
     Callable,
