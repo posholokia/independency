@@ -24,9 +24,9 @@ ObjType = Union[str, Type[_T]]
 
 
 class Scope(Enum):
-    transient: int = 0
-    singleton: int = 1
-    cached: int = 2
+    transient = 0
+    singleton = 1
+    cached = 2
 
 
 class ContainerError(Exception):
