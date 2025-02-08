@@ -17,11 +17,11 @@ from typing import (
     get_args,
     get_origin,
     get_type_hints,
+    overload,
 )
 
 _T = TypeVar('_T')
-CLS = TypeVar("CLS", Any, str)
-ObjType = Union[str, Type[_T]]
+ObjType = Union[Type[_T], str]
 
 
 class Scope(Enum):
@@ -135,19 +135,19 @@ def _update_localns(cls: ObjType[Any], localns: Dict[str, Any]) -> None:
 
 
 class ResolutionCache:
-    def __init__(self):
-        self.cache: dict[str, Any] = {}
+    def __init__(self) -> None:
+        self.cache: Dict[ObjType[Any], Any] = {}
 
-    def __setitem__(self, key, instance):
+    def __setitem__(self, key: ObjType[Any], instance: Any) -> None:
         self.cache[key] = instance
 
-    def __getitem__(self, key) -> Any:
+    def __getitem__(self, key: ObjType[Any]) -> Any:
         return self.cache.get(key)
 
-    def has_cached(self, key) -> bool:
+    def has_cached(self, key: ObjType[Any]) -> bool:
         return key in self.cache
 
-    def clear(self):
+    def clear(self) -> None:
         self.cache.clear()
 
 
@@ -167,12 +167,24 @@ class Container:  # pylint: disable=R0903
     def get_registered_deps(self) -> Set[ObjType[Any]]:
         return set(self._registry.keys())
 
-    def resolve(self, cls: ObjType[type[CLS]]) -> CLS:
-        result = self.resolve_impl(cls)
+    @overload
+    def resolve(self, cls: Type[_T]) -> _T: ...
+
+    @overload
+    def resolve(self, cls: str) -> Any: ...
+
+    def resolve(self, cls: ObjType[Any]) -> Any:
+        result = self._resolve_impl(cls)
         self._cache.clear()
         return result
 
-    def resolve_impl(self, cls: ObjType[type[CLS]]) -> CLS:
+    @overload
+    def _resolve_impl(self, cls: Type[_T]) -> _T: ...
+
+    @overload
+    def _resolve_impl(self, cls: str) -> Any: ...
+
+    def _resolve_impl(self, cls: ObjType[Any]) -> Any:
         cls = get_from_localns(cls, self._localns)
 
         if cls in self._resolved:
@@ -189,7 +201,7 @@ class Container:  # pylint: disable=R0903
         args = _resolve_constants(current.kwargs)
         deps_to_resolve = get_deps(current, self._localns)
         for key, d in deps_to_resolve.items():
-            args[key] = self.resolve_impl(d)
+            args[key] = self._resolve_impl(d)
         result = current.factory(**args)
         if current.scope is Scope.singleton:
             self._resolved[current.cls] = result

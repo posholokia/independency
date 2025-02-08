@@ -4,7 +4,7 @@ from typing import Any, Dict, Final, Generic, TypeVar
 
 import pytest
 
-from independency.container import Container, ContainerBuilder, ContainerError
+from independency.container import Container, ContainerBuilder, ContainerError, Scope
 from independency.container import Dependency as Dep
 from independency.container import get_generic_mapping, get_signature
 
@@ -138,7 +138,7 @@ def test_resolves_instances():
         pass
 
     builder = ContainerBuilder()
-    builder.register(A, A, is_singleton=False)
+    builder.register(A, A)
     builder.singleton(B, B)
     container = builder.build()
 
@@ -154,12 +154,12 @@ def test_registering_an_instance_as_factory_is_exception():
     a = A()
 
     with pytest.raises(ContainerError):
-        builder.register(A, a, is_singleton=True)  # type: ignore
+        builder.register(A, a, scope=Scope.singleton)  # type: ignore
 
 
 def test_can_use_a_string_key():
     builder = ContainerBuilder()
-    builder.register("foo", lambda: 1, is_singleton=True)
+    builder.register("foo", lambda: 1, scope=Scope.singleton)
 
     container = builder.build()
     assert container.resolve("foo") == 1
@@ -375,8 +375,8 @@ def test_cyclic_dependencies():
             self.a = a
 
     builder = ContainerBuilder()
-    builder.register(A, A, is_singleton=False)
-    builder.register(B, B, is_singleton=False)
+    builder.register(A, A)
+    builder.register(B, B)
     with pytest.raises(ContainerError):
         builder.build()
 

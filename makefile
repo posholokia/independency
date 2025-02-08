@@ -1,7 +1,7 @@
 .PHONY : venv black flake9 mypy pylint lint pretty tests
 
 VENV ?= .venv
-PYTHON ?= python3.9
+PYTHON ?= python3.12
 TESTS ?= tests
 CODE ?= independency
 ALL = $(CODE) $(TESTS)
@@ -32,4 +32,4 @@ pretty:
 	$(VENV)/bin/black --skip-string-normalization $(ALL)
 
 tests:
-	$(VENV)/bin/pytest --cov=independency $(TESTS)
+	pytest --cov=independency $(TESTS)
