@@ -17,10 +17,11 @@ from typing import (
     get_args,
     get_origin,
     get_type_hints,
-    overload,
+    Generic,
 )
 
-_T = TypeVar('_T')
+
+_T = TypeVar('_T', bound=Any)
 ObjType = Union[Type[_T], str]
 
 
@@ -134,24 +135,26 @@ def _update_localns(cls: ObjType[Any], localns: Dict[str, Any]) -> None:
         localns[cls] = cls
 
 
-class ResolutionCache:
+class ResolutionCache(Generic[_T]):
     def __init__(self) -> None:
-        self.cache: Dict[ObjType[Any], Any] = {}
+        self.cache: Dict[ObjType[_T], _T] = {}
 
     def __setitem__(self, key: ObjType[Any], instance: Any) -> None:
         self.cache[key] = instance
 
-    def __getitem__(self, key: ObjType[Any]) -> Any:
-        return self.cache.get(key)
+    def __getitem__(self, key: Union[Type[_T], str]) -> _T:
+        cls_ = self.cache.get(key)
+        assert cls_ is not None
+        return cls_
 
-    def has_cached(self, key: ObjType[Any]) -> bool:
+    def has_cached(self, key: Union[Type[_T], str]) -> bool:
         return key in self.cache
 
     def clear(self) -> None:
         self.cache.clear()
 
 
-class Container:  # pylint: disable=R0903
+class Container(Generic[_T]):  # pylint: disable=R0903
     __slots__ = ["_registry", "_localns", "_resolved", "_cache"]
 
     def __init__(
@@ -161,30 +164,18 @@ class Container:  # pylint: disable=R0903
     ):
         self._registry = registry
         self._localns = localns
-        self._resolved: Dict[ObjType[Any], Any] = {}
-        self._cache = ResolutionCache()
+        self._resolved: Dict[Union[Type[_T], str], _T] = {}  # Правильная аннотация
+        self._cache = ResolutionCache[_T]()
 
     def get_registered_deps(self) -> Set[ObjType[Any]]:
         return set(self._registry.keys())
 
-    @overload
-    def resolve(self, cls: Type[_T]) -> _T: ...
-
-    @overload
-    def resolve(self, cls: str) -> Any: ...
-
-    def resolve(self, cls: ObjType[Any]) -> Any:
+    def resolve(self, cls: Union[Type[_T], str]) -> _T:
         result = self._resolve_impl(cls)
         self._cache.clear()
         return result
 
-    @overload
-    def _resolve_impl(self, cls: Type[_T]) -> _T: ...
-
-    @overload
-    def _resolve_impl(self, cls: str) -> Any: ...
-
-    def _resolve_impl(self, cls: ObjType[Any]) -> Any:
+    def _resolve_impl(self, cls: Union[Type[_T], str]) -> _T:
         cls = get_from_localns(cls, self._localns)
 
         if cls in self._resolved:
@@ -202,7 +193,7 @@ class Container:  # pylint: disable=R0903
         deps_to_resolve = get_deps(current, self._localns)
         for key, d in deps_to_resolve.items():
             args[key] = self._resolve_impl(d)
-        result = current.factory(**args)
+        result: _T = current.factory(**args)
         if current.scope is Scope.singleton:
             self._resolved[current.cls] = result
         if current.scope is Scope.cached:
@@ -267,10 +258,10 @@ class ContainerBuilder:
         self._registry: Dict[ObjType[Any], Registration] = {}
         self._localns: Dict[str, Any] = {}
 
-    def build(self) -> Container:
+    def build(self) -> Container[Any]:
         registry = self._registry.copy()
         localns = self._localns.copy()
-        container = Container(registry=registry, localns=localns)
+        container = Container[Any](registry=registry, localns=localns)
         registry[Container] = Registration(
             cls=Container,
             factory=lambda: container,
@@ -289,11 +280,11 @@ class ContainerBuilder:
         )
 
     def register(
-            self,
-            cls: ObjType[Any],
-            factory: Callable[..., Any],
-            scope: Scope = Scope.transient,
-            **kwargs: Any,
+        self,
+        cls: ObjType[Any],
+        factory: Callable[..., Any],
+        scope: Scope = Scope.transient,
+        **kwargs: Any,
     ) -> None:
         if cls in self._registry:
             raise ContainerError(f"Type {cls} is already registered")

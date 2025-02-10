@@ -482,7 +482,7 @@ def test_get_container_as_dependency():
         def __init__(self, mapping: Dict[str, Any]):
             self.mapping = mapping
 
-    def make_a(container: Container, settings: Settings) -> A:
+    def make_a(container: Container[Any], settings: Settings) -> A:
         return A(container.resolve(settings.mapping['key']))
 
     builder = ContainerBuilder()
@@ -500,7 +500,7 @@ def test_container_as_dependency_in_test_container():
         def __init__(self, x: int):
             self.x = x
 
-    def make_a(container: Container) -> A:
+    def make_a(container: Container[Any]) -> A:
         return A(container.resolve(int))
 
     builder = ContainerBuilder()
