@@ -135,26 +135,26 @@ def _update_localns(cls: ObjType[Any], localns: Dict[str, Any]) -> None:
         localns[cls] = cls
 
 
-class ResolutionCache(Generic[_T]):
+class ResolutionCache:
     def __init__(self) -> None:
-        self.cache: Dict[ObjType[_T], _T] = {}
+        self.cache: Dict[ObjType[Any], Any] = {}
 
     def __setitem__(self, key: ObjType[Any], instance: Any) -> None:
         self.cache[key] = instance
 
-    def __getitem__(self, key: Union[Type[_T], str]) -> _T:
+    def __getitem__(self, key: Union[Type[Any], str]) -> Any:
         cls_ = self.cache.get(key)
         assert cls_ is not None
         return cls_
 
-    def has_cached(self, key: Union[Type[_T], str]) -> bool:
+    def has_cached(self, key: Union[Type[Any], str]) -> bool:
         return key in self.cache
 
     def clear(self) -> None:
         self.cache.clear()
 
 
-class Container(Generic[_T]):  # pylint: disable=R0903
+class Container:  # pylint: disable=R0903
     __slots__ = ["_registry", "_localns", "_resolved", "_cache"]
 
     def __init__(
@@ -164,18 +164,18 @@ class Container(Generic[_T]):  # pylint: disable=R0903
     ):
         self._registry = registry
         self._localns = localns
-        self._resolved: Dict[Union[Type[_T], str], _T] = {}  # Правильная аннотация
-        self._cache = ResolutionCache[_T]()
+        self._resolved: Dict[Union[Type[Any], str], Any] = {}
+        self._cache = ResolutionCache()
 
     def get_registered_deps(self) -> Set[ObjType[Any]]:
         return set(self._registry.keys())
 
     def resolve(self, cls: Union[Type[_T], str]) -> _T:
-        result = self._resolve_impl(cls)
+        result: _T = self._resolve_impl(cls)
         self._cache.clear()
         return result
 
-    def _resolve_impl(self, cls: Union[Type[_T], str]) -> _T:
+    def _resolve_impl(self, cls: Union[Type[_T], str]) -> Any:
         cls = get_from_localns(cls, self._localns)
 
         if cls in self._resolved:
@@ -217,7 +217,7 @@ class Container(Generic[_T]):  # pylint: disable=R0903
 class TestContainer(Container):
     def with_overridden(
         self,
-        cls: ObjType[Any],
+        cls: Union[Type[_T], str],
         factory: Callable[..., Any],
         scope: Scope = Scope.transient,
         **kwargs: Any,
@@ -244,7 +244,10 @@ class TestContainer(Container):
         return container
 
     def with_overridden_singleton(
-        self, cls: ObjType[Any], factory: Callable[..., Any], **kwargs: Any
+        self,
+        cls: Union[Type[_T], str],
+        factory: Callable[..., Any],
+        **kwargs: Any,
     ) -> "TestContainer":
         return self.with_overridden(
             cls, factory, scope=Scope.singleton, **kwargs
@@ -258,10 +261,10 @@ class ContainerBuilder:
         self._registry: Dict[ObjType[Any], Registration] = {}
         self._localns: Dict[str, Any] = {}
 
-    def build(self) -> Container[Any]:
+    def build(self) -> Container:
         registry = self._registry.copy()
         localns = self._localns.copy()
-        container = Container[Any](registry=registry, localns=localns)
+        container = Container(registry=registry, localns=localns)
         registry[Container] = Registration(
             cls=Container,
             factory=lambda: container,
@@ -273,7 +276,7 @@ class ContainerBuilder:
         return container
 
     def singleton(
-            self, cls: ObjType[Any], factory: Callable[..., Any], **kwargs: Any
+        self, cls: ObjType[Any], factory: Callable[..., Any], **kwargs: Any
     ) -> None:
         self.register(
             cls=cls, factory=factory, scope=Scope.singleton, **kwargs

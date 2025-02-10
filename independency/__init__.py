@@ -1,5 +1,11 @@
 # flake8: noqa
-from .container import Container, ContainerBuilder, ContainerError, Dependency, TestContainer
+from .container import (
+    Container,
+    ContainerBuilder,
+    ContainerError,
+    Dependency,
+    Scope,
+)
 
 
 __all__ = (
@@ -7,5 +13,5 @@ __all__ = (
     "ContainerBuilder",
     "ContainerError",
     "Dependency",
-    "TestContainer",
+    "Scope",
 )
