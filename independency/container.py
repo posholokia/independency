@@ -163,18 +163,18 @@ class Container:  # pylint: disable=R0903
     ):
         self._registry = registry
         self._localns = localns
-        self._resolved: Dict[ObjType[Any], Any] = {}
+        self._resolved: Dict[Union[Type[Any], str], Any] = {}
         self._cache = ResolutionCache()
 
     def get_registered_deps(self) -> Set[ObjType[Any]]:
         return set(self._registry.keys())
 
-    def resolve(self, cls: ObjType[_T]) -> _T:
+    def resolve(self, cls: Union[Type[_T], str]) -> _T:
         result: _T = self._resolve_impl(cls)
         self._cache.clear()
         return result
 
-    def _resolve_impl(self, cls: ObjType[_T]) -> Any:
+    def _resolve_impl(self, cls: Union[Type[_T], str]) -> Any:
         cls = get_from_localns(cls, self._localns)
 
         if cls in self._resolved:
@@ -216,7 +216,7 @@ class Container:  # pylint: disable=R0903
 class TestContainer(Container):
     def with_overridden(
         self,
-        cls: ObjType[Any],
+        cls: Union[Type[_T], str],
         factory: Callable[..., Any],
         scope: Scope = Scope.transient,
         **kwargs: Any,
@@ -244,7 +244,7 @@ class TestContainer(Container):
 
     def with_overridden_singleton(
         self,
-        cls: ObjType[Any],
+        cls: Union[Type[_T], str],
         factory: Callable[..., Any],
         **kwargs: Any,
     ) -> "TestContainer":
