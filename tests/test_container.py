@@ -4,8 +4,8 @@ from typing import Any, Dict, Final, Generic, TypeVar
 
 import pytest
 
-from independency.container import Container, ContainerBuilder, ContainerError, Scope
-from independency.container import Dependency as Dep
+from independency import Container, ContainerBuilder, ContainerError, Scope
+from independency import Dependency as Dep
 from independency.container import get_generic_mapping, get_signature
 
 
@@ -509,9 +509,12 @@ def test_container_as_dependency_in_test_container():
 
     container = builder.build()
     test_container = container.create_test_container().with_overridden_singleton(int, lambda: 2)
+    # test_container = test_container.with_overridden_singleton(int, lambda: 2)
 
-    assert container.resolve(A).x == 1
-    assert test_container.resolve(A).x == 2
+    cls_a = container.resolve(A)
+    assert cls_a.x == 1
+    cls_test_a = test_container.resolve(A)
+    assert cls_test_a.x == 2
 
 
 def test_show_parent_for_missing():

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "independency"
-version = "1.3.1"
+version = "1.3.2"
 description = "Dependency injection container"
 readme = "README.md"
 repository = "https://github.com/posholokia/independency/"

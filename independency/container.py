@@ -17,10 +17,10 @@ from typing import (
     get_args,
     get_origin,
     get_type_hints,
-    overload,
 )
 
-_T = TypeVar('_T')
+
+_T = TypeVar('_T', bound=Any)
 ObjType = Union[Type[_T], str]
 
 
@@ -141,10 +141,12 @@ class ResolutionCache:
     def __setitem__(self, key: ObjType[Any], instance: Any) -> None:
         self.cache[key] = instance
 
-    def __getitem__(self, key: ObjType[Any]) -> Any:
-        return self.cache.get(key)
+    def __getitem__(self, key: Union[Type[Any], str]) -> Any:
+        cls_ = self.cache.get(key)
+        assert cls_ is not None
+        return cls_
 
-    def has_cached(self, key: ObjType[Any]) -> bool:
+    def has_cached(self, key: Union[Type[Any], str]) -> bool:
         return key in self.cache
 
     def clear(self) -> None:
@@ -161,30 +163,18 @@ class Container:  # pylint: disable=R0903
     ):
         self._registry = registry
         self._localns = localns
-        self._resolved: Dict[ObjType[Any], Any] = {}
+        self._resolved: Dict[Union[Type[Any], str], Any] = {}
         self._cache = ResolutionCache()
 
     def get_registered_deps(self) -> Set[ObjType[Any]]:
         return set(self._registry.keys())
 
-    @overload
-    def resolve(self, cls: Type[_T]) -> _T: ...
-
-    @overload
-    def resolve(self, cls: str) -> Any: ...
-
-    def resolve(self, cls: ObjType[Any]) -> Any:
-        result = self._resolve_impl(cls)
+    def resolve(self, cls: Union[Type[_T], str]) -> _T:
+        result: _T = self._resolve_impl(cls)
         self._cache.clear()
         return result
 
-    @overload
-    def _resolve_impl(self, cls: Type[_T]) -> _T: ...
-
-    @overload
-    def _resolve_impl(self, cls: str) -> Any: ...
-
-    def _resolve_impl(self, cls: ObjType[Any]) -> Any:
+    def _resolve_impl(self, cls: Union[Type[_T], str]) -> Any:
         cls = get_from_localns(cls, self._localns)
 
         if cls in self._resolved:
@@ -202,7 +192,7 @@ class Container:  # pylint: disable=R0903
         deps_to_resolve = get_deps(current, self._localns)
         for key, d in deps_to_resolve.items():
             args[key] = self._resolve_impl(d)
-        result = current.factory(**args)
+        result: _T = current.factory(**args)
         if current.scope is Scope.singleton:
             self._resolved[current.cls] = result
         if current.scope is Scope.cached:
@@ -226,7 +216,7 @@ class Container:  # pylint: disable=R0903
 class TestContainer(Container):
     def with_overridden(
         self,
-        cls: ObjType[Any],
+        cls: Union[Type[_T], str],
         factory: Callable[..., Any],
         scope: Scope = Scope.transient,
         **kwargs: Any,
@@ -253,7 +243,10 @@ class TestContainer(Container):
         return container
 
     def with_overridden_singleton(
-        self, cls: ObjType[Any], factory: Callable[..., Any], **kwargs: Any
+        self,
+        cls: Union[Type[_T], str],
+        factory: Callable[..., Any],
+        **kwargs: Any,
     ) -> "TestContainer":
         return self.with_overridden(
             cls, factory, scope=Scope.singleton, **kwargs
@@ -282,18 +275,18 @@ class ContainerBuilder:
         return container
 
     def singleton(
-            self, cls: ObjType[Any], factory: Callable[..., Any], **kwargs: Any
+        self, cls: ObjType[Any], factory: Callable[..., Any], **kwargs: Any
     ) -> None:
         self.register(
             cls=cls, factory=factory, scope=Scope.singleton, **kwargs
         )
 
     def register(
-            self,
-            cls: ObjType[Any],
-            factory: Callable[..., Any],
-            scope: Scope = Scope.transient,
-            **kwargs: Any,
+        self,
+        cls: ObjType[Any],
+        factory: Callable[..., Any],
+        scope: Scope = Scope.transient,
+        **kwargs: Any,
     ) -> None:
         if cls in self._registry:
             raise ContainerError(f"Type {cls} is already registered")
